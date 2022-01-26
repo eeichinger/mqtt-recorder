@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python3 -u
 
 """MQTT recorder"""
 
@@ -18,7 +18,6 @@ from hbmqtt.client import QOS_0, QOS_1, MQTTClient
 TOPICS = [("#", QOS_1)]
 
 logger = logging.getLogger('mqtt_recorder')
-
 
 async def mqtt_record(server: str, output: str = None) -> None:
     """Record MQTT messages"""
@@ -40,7 +39,8 @@ async def mqtt_record(server: str, output: str = None) -> None:
             'payloadlen': len(message.data),
             'payload': json.loads(message.data)
         }
-        print(json.dumps(record), file=output_file)
+        recjson=json.dumps(record)
+        print(recjson, file=output_file, flush=True)
 
 
 async def mqtt_replay(server: str, input: str = None, delay: int = 0, realtime: bool = False, scale: float = 1) -> None:
