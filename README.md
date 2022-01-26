@@ -21,4 +21,25 @@ optional arguments:
   --speed factor        Realtime speed factor for replay (10=10x)
   --delay milliseconds  Delay between replayed events
   --debug               Enable debugging
+
+
+Examples:
+
+# recording
+./mqtt_recorder.py --server 192.168.0.1 --mode record | tee record.json
+
+# replay in realtime
+./mqtt_recorder.py --server 192.168.0.1 --mode replay --input record.json
+
+```
+
+# Create & activate virtual env
+```
+python3 -m venv .venv
+source .venv/bin/activate
+
+# upgrade pip
+pip install --upgrade pip
+# install deps
+pip install -r requirements.txt
 ```
