@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 """MQTT recorder"""
 
 import argparse
@@ -9,6 +11,7 @@ import os
 import signal
 import sys
 import time
+import dateutil.parser
 
 from hbmqtt.client import QOS_0, QOS_1, MQTTClient
 
@@ -28,12 +31,14 @@ async def mqtt_record(server: str, output: str = None) -> None:
         output_file = sys.stdout
     while True:
         message = await mqtt.deliver_message()
+        tst=time.strftime("%Y-%m-%dT%H:%M:%S.%s%z", time.localtime())
         record = {
-            'time': time.time(),
+            'tst': tst,
             'qos': message.qos,
-            'retain': message.retain,
+            'retain': 1 if message.retain else 0,
             'topic': message.topic,
-            'msg_b64': base64.urlsafe_b64encode(message.data).decode()
+            'payloadlen': len(message.data),
+            'payload': json.loads(message.data)
         }
         print(json.dumps(record), file=output_file)
 

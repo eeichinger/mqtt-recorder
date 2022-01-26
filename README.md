@@ -1,6 +1,8 @@
 # MQTT Recorder
 
-Simple tool to record/replay MQTT data.
+Simple tool to record/replay MQTT data compatible with format produced by mosquitto_sub
+
+mosquitto_sub -v -h 127.0.0.1 -p 1883 -i mqtt-cli-4663d4e5 -c -t '#' -F %J
 
 ## Usage
 
