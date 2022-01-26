@@ -59,25 +59,28 @@ async def mqtt_replay(server: str, input: str = None, delay: int = 0, realtime: 
     last_timestamp = None
     for line in input_file:
         record = json.loads(line)
-        logger.info("%s", record)
         if 'msg_b64' in record:
             msg = base64.urlsafe_b64decode(record['msg_b64'].encode())
         elif 'msg' in record:
             msg = record['msg'].encode()
+        elif 'payload' in record:
+            msg = json.dumps(record['payload']).encode()
         else:
             logger.warning("Missing message attribute: %s", record)
             next
-        logger.info("Publish: %s", record)
+        delay_s = static_delay_s
+        tststr=dateutil.parser.isoparse(record['tst'].replace('Z+', '+'))
+        tst=tststr.timestamp()
+        if realtime or scale != 1:
+            delay_s += (tst - last_timestamp if last_timestamp else 0) * scale
+            last_timestamp = tst
+        if delay_s > 0:
+            logger.info("Sleeping %.3f seconds", delay_s)
+            await asyncio.sleep(delay_s)
+        logger.info("publish: %s", record)
         await mqtt.publish(record['topic'], msg,
                            retain=record.get('retain'),
                            qos=record.get('qos', QOS_0))
-        delay_s = static_delay_s
-        if realtime or scale != 1:
-            delay_s += (record['time'] - last_timestamp if last_timestamp else 0) * scale
-            last_timestamp = record['time']
-        if delay_s > 0:
-            logger.debug("Sleeping %.3f seconds", delay_s)
-            await asyncio.sleep(delay_s)
 
 
 async def shutdown(sig, loop):
