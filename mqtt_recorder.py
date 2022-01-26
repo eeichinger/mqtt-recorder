@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 """MQTT recorder"""
 
 import argparse
@@ -12,7 +10,7 @@ import signal
 import sys
 import time
 
-import paho.mqtt.client as mqtt
+from hbmqtt.client import QOS_0, QOS_1, MQTTClient
 
 TOPICS = [("#", QOS_1)]
 
@@ -21,27 +19,24 @@ logger = logging.getLogger('mqtt_recorder')
 
 async def mqtt_record(server: str, output: str = None) -> None:
     """Record MQTT messages"""
-    mqttc = mqtt.Client()
-    mqttc.connect(server, 1883, 60)
-    for topic in TOPICS:
-        mqttc.subscribe(topic)
-
+    mqtt = MQTTClient()
+    await mqtt.connect(server)
+    await mqtt.subscribe(TOPICS)
     if output is not None:
         output_file = open(output, 'wt')
     else:
         output_file = sys.stdout
-
-    def on_message(mqttc, obj, message):
+    while True:
+        message = await mqtt.deliver_message()
         record = {
             'time': time.time(),
             'qos': message.qos,
             'retain': message.retain,
             'topic': message.topic,
-            'msg_b64': base64.urlsafe_b64encode(message.payload).decode()
+            'msg_b64': base64.urlsafe_b64encode(message.data).decode()
         }
         print(json.dumps(record), file=output_file)
-    mqttc.on_message = on_message
-    await mqttc.loop_forever()
+
 
 async def mqtt_replay(server: str, input: str = None, delay: int = 0, realtime: bool = False, scale: float = 1) -> None:
     """Replay MQTT messages"""
