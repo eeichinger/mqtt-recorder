@@ -45,7 +45,7 @@ async def mqtt_record(server: str, output: str = None) -> None:
 
 async def mqtt_replay(server: str, input: str = None, delay: int = 0, realtime: bool = False, scale: float = 1) -> None:
     """Replay MQTT messages"""
-    mqtt = MQTTClient()
+    mqtt = MQTTClient('mqtt-cli-3663d4e2')
     await mqtt.connect(server)
     await mqtt.subscribe(TOPICS)
     if input is not None:
