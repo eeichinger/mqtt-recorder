@@ -85,7 +85,9 @@ async def mqtt_replay(server: str, input: str = None, delay: int = 0, realtime: 
         await mqtt.publish(record['topic'], msg,
                            retain=record.get('retain'),
                            qos=record.get('qos', QOS_0))
-
+    # wait for last message to be published
+    await asyncio.sleep(2)
+    input_file.close()
 
 async def shutdown(sig, loop):
     loop.stop()
