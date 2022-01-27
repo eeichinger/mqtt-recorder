@@ -58,6 +58,10 @@ async def mqtt_replay(server: str, input: str = None, delay: int = 0, realtime: 
         static_delay_s = 0
     last_timestamp = None
     for line in input_file:
+        if line.startswith('#'):
+            logger.info("ignore: %s", line)
+            continue
+
         record = json.loads(line)
         if 'msg_b64' in record:
             msg = base64.urlsafe_b64decode(record['msg_b64'].encode())
