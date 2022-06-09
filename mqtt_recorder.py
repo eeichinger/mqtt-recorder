@@ -1,4 +1,4 @@
-#!/usr/bin/env python3 -u
+#!/usr/bin/env -S python3 -u
 
 """MQTT recorder"""
 
@@ -19,9 +19,9 @@ TOPICS = [("#", QOS_1)]
 
 logger = logging.getLogger('mqtt_recorder')
 
-async def mqtt_record(server: str, output: str = None) -> None:
+async def mqtt_record(server: str, clientid: str, output: str = None) -> None:
     """Record MQTT messages"""
-    mqtt = MQTTClient()
+    mqtt = MQTTClient(clientid)
     await mqtt.connect(server)
     await mqtt.subscribe(TOPICS)
     if output is not None:
@@ -43,51 +43,59 @@ async def mqtt_record(server: str, output: str = None) -> None:
         print(recjson, file=output_file, flush=True)
 
 
-async def mqtt_replay(server: str, input: str = None, delay: int = 0, realtime: bool = False, scale: float = 1) -> None:
+async def mqtt_replay(server: str, clientid: str, input: str = None, delay: int = 0, realtime: bool = False, scale: float = 1, loop: int = 1) -> None:
     """Replay MQTT messages"""
-    mqtt = MQTTClient('mqtt-cli-3663d4e2')
+    mqtt = MQTTClient(clientid)
     await mqtt.connect(server)
     await mqtt.subscribe(TOPICS)
-    if input is not None:
-        input_file = open(input, 'rt')
-    else:
-        input_file = sys.stdin
-    if delay > 0:
-        static_delay_s = delay / 1000
-    else:
-        static_delay_s = 0
-    last_timestamp = None
-    for line in input_file:
-        if line.startswith('#'):
-            logger.info("ignore: %s", line)
-            continue
 
-        record = json.loads(line)
-        if 'msg_b64' in record:
-            msg = base64.urlsafe_b64decode(record['msg_b64'].encode())
-        elif 'msg' in record:
-            msg = record['msg'].encode()
-        elif 'payload' in record:
-            msg = json.dumps(record['payload']).encode()
+    if (loop < 0):
+        loop = sys.maxsize
+
+    for it in range(0, loop):
+        logger.info("loop count: %s of %s", it, loop)
+
+        if input is not None:
+            input_file = open(input, 'rt')
         else:
-            logger.warning("Missing message attribute: %s", record)
-            next
-        delay_s = static_delay_s
-        tststr=dateutil.parser.isoparse(record['tst'].replace('Z+', '+'))
-        tst=tststr.timestamp()
-        if realtime or scale != 1:
-            delay_s += (tst - last_timestamp if last_timestamp else 0) * scale
-            last_timestamp = tst
-        if delay_s > 0:
-            logger.info("Sleeping %.3f seconds", delay_s)
-            await asyncio.sleep(delay_s)
-        logger.info("publish: %s", record)
-        await mqtt.publish(record['topic'], msg,
-                           retain=record.get('retain'),
-                           qos=record.get('qos', QOS_0))
-    # wait for last message to be published
+            input_file = sys.stdin
+        if delay > 0:
+            static_delay_s = delay / 1000
+        else:
+            static_delay_s = 0
+        last_timestamp = None
+        for line in input_file:
+            if line.startswith('#'):
+                logger.info("ignore: %s", line)
+                continue
+
+            record = json.loads(line)
+            if 'msg_b64' in record:
+                msg = base64.urlsafe_b64decode(record['msg_b64'].encode())
+            elif 'msg' in record:
+                msg = record['msg'].encode()
+            elif 'payload' in record:
+                msg = json.dumps(record['payload']).encode()
+            else:
+                logger.warning("Missing message attribute: %s", record)
+                next
+            delay_s = static_delay_s
+            tststr=dateutil.parser.isoparse(record['tst'].replace('Z+', '+'))
+            tst=tststr.timestamp()
+            if realtime or scale != 1:
+                delay_s += (tst - last_timestamp if last_timestamp else 0) * scale
+                last_timestamp = tst
+            if delay_s > 0:
+                logger.info("Sleeping %.3f seconds", delay_s)
+                await asyncio.sleep(delay_s)
+            logger.info("publish: %s", record)
+            await mqtt.publish(record['topic'], msg,
+                               retain=record.get('retain'),
+                               qos=record.get('qos', QOS_0))
+        # wait for last message to be published
+        input_file.close()
+
     await asyncio.sleep(2)
-    input_file.close()
 
 async def shutdown(sig, loop):
     loop.stop()
@@ -102,7 +110,12 @@ def main():
                         dest='server',
                         metavar='server',
                         help='MQTT broker',
-                        default='mqtt://127.0.0.1/')
+                        default='mqtt://127.0.0.1:1883/')
+    parser.add_argument('--clientid',
+                        dest='clientid',
+                        metavar='clientid',
+                        help='MQTT Client-ID',
+                        default=None)
     parser.add_argument('--mode',
                         dest='mode',
                         metavar='mode',
@@ -133,6 +146,12 @@ def main():
                         default=0,
                         metavar='milliseconds',
                         help='Delay between replayed events')
+    parser.add_argument('--loop',
+                        dest='loop',
+                        metavar='loop',
+                        type=int,
+                        default=1,
+                        help='repeat replay script. Set -1 for infinite')
     parser.add_argument('--debug',
                         dest='debug',
                         action='store_true',
@@ -146,11 +165,11 @@ def main():
         logging.basicConfig(level=logging.INFO)
 
     if args.mode == 'replay':
-        process = mqtt_replay(server=args.server, input=args.input,
+        process = mqtt_replay(server=args.server, clientid=args.clientid, input=args.input,
                               delay=args.delay, realtime=args.realtime,
-                              scale=1 / args.speed)
+                              scale=1 / args.speed, loop=args.loop)
     else:
-        process = mqtt_record(server=args.server, output=args.output)
+        process = mqtt_record(server=args.server, clientid=args.clientid, output=args.output)
 
     loop = asyncio.get_event_loop()
     for s in (signal.SIGINT, signal.SIGTERM):

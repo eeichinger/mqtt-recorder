@@ -8,7 +8,7 @@ Advantage of this project:
 - adds the option to control replay speed (via --realtime, --speed or --delay options)
 
 Downside:
-- as of now uses an outdated lib `hbmqtt` which doesn't work with python>3.7 and doesn't support TLS connections 
+- as of now uses an outdated lib `hbmqtt` which doesn't work with python>3.7 and doesn't support TLS connections (see TODOs section below)
 
 
 Simple tool to record/replay MQTT data compatible with format produced by mosquitto_sub
@@ -22,14 +22,12 @@ $>mosquitto_sub -v -h 127.0.0.1 -p 1883 -i mqtt-cli-4663d4e5 -c -t '#' -F %J
 
 ## NOTE
 
-Currently this tool requires python 3.7. It will *not* work with later versions!
+this tool requires Docker
 
 ## Usage
 
-**NOTE:** Make sure you have create your local python environment, see "Manage Python Environment" below
-
 ```
-usage: mqtt_recorder.py [-h] [--server server] [--mode mode]
+usage: mqtt_recorder.sh [-h] [--server server] [--mode mode]
                         [--input filename] [--output filename] [--realtime]
                         [--speed factor] [--delay milliseconds] [--debug]
 
@@ -57,10 +55,12 @@ Examples:
 
 ```
 
-# Manage Python Environment
-
+# Development
+ 
 ## Install python 3.7
 Make sure you have v3.7 installed. You can use pyenv to manage python versions, see https://github.com/pyenv/pyenv.
+
+**NOTE**: the currently used library `hbmqtt` requires python 3.7. It does not work on newer versions.
 
 TL;DR on MacOS:
 ```shell
@@ -87,3 +87,7 @@ pip install --upgrade pip
 # install deps
 pip install -r requirements.txt
 ```
+
+# TODOs
+
+- Migrate to `amqtt` or `paho-mqtt` instead of `hbmqtt` - see e.g. https://github.com/rpdswtk/mqtt_recorder
